@@ -36,3 +36,5 @@ sysinfo.txt
 *.unitypackage
 
 demo/Assets/StreamingAssets/OpenJTalk/tmp/
+
+.vscode
