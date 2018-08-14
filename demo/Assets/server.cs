@@ -14,6 +14,8 @@ using Unosquare.Labs.EmbedIO;
 using Unosquare.Net;
 using System.IO;
 
+
+
 class Message
 {
 	[JsonProperty("message")]
@@ -22,13 +24,16 @@ class Message
 
 public class MessageController : WebApiController
 {
-	public static void Setup(WebServer server)
+	static UnityChanLipSync  speaker;
+	public static void Setup(WebServer server, UnityChanLipSync  _speaker)
 	{
 		server.RegisterModule(new WebApiModule());
 		server.Module<WebApiModule>().RegisterController<MessageController>();
 
 		string path = Application.dataPath + "/Web/";
 		server.RegisterModule(new StaticFilesModule(path));
+
+		speaker = _speaker;
 	}
 
 	[WebApiHandler(HttpVerbs.Post, "/message")]
@@ -37,11 +42,12 @@ public class MessageController : WebApiController
 		try
 		{
 			Message message = context.ParseJson<Message>();
-			if(message.message == null) {
+			if(message.message == null || message.message.Length == 0) {
 				throw new Exception();
 			}
 
 			Debug.Log(message.message);
+			speaker.Talk(message.message);
 
 			context.Response.StatusCode = (int) System.Net.HttpStatusCode.Created;
 			return await context.StringResponseAsync(string.Empty);
@@ -59,12 +65,13 @@ public class server : MonoBehaviour {
 	// Use this for initialization
 	async Task Start () {	
 		Debug.Log("start !");
+		var lipSync = GetComponent<UnityChanLipSync>();
 			
 		var url = $@"http://*:9000";
 
 		using (var server = new WebServer(url, RoutingStrategy.Regex))
 		{
-			MessageController.Setup(server);
+			MessageController.Setup(server, lipSync);
 			await server.RunAsync();
 		}
 
