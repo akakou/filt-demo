@@ -30,7 +30,10 @@ public class MessageController : WebApiController
 		server.RegisterModule(new WebApiModule());
 		server.Module<WebApiModule>().RegisterController<MessageController>();
 
-		string path = Application.dataPath + "/Web/";
+		string path = Environment.GetFolderPath (Environment.SpecialFolder.Personal) + "/FiltDemo/Web/";
+		path = path.Replace("\\", "/");
+		//string path = Application.dataPath + "/../../Web/";
+		Debug.Log(path);
 		server.RegisterModule(new StaticFilesModule(path));
 
 		speaker = _speaker;
