@@ -12,31 +12,46 @@ using Unosquare.Labs.EmbedIO.Modules;
 using Unosquare.Labs.EmbedIO.Constants;
 using Unosquare.Labs.EmbedIO;
 using Unosquare.Net;
-
+using System.IO;
 
 class Message
 {
 	[JsonProperty("message")]
-	public int Id { get; set; }
+	public string message { get; set; }
 }
 
 public class MessageController : WebApiController
 {
-        public static void Setup(WebServer server)
-        {
-            server.RegisterModule(new WebApiModule());
-            server.Module<WebApiModule>().RegisterController<MessageController>();
-        }
+	public static void Setup(WebServer server)
+	{
+		server.RegisterModule(new WebApiModule());
+		server.Module<WebApiModule>().RegisterController<MessageController>();
 
-
-	    [WebApiHandler(HttpVerbs.Get, "/test")]
-        public async Task<bool> GetMessage(WebServer server, HttpListenerContext context,
-            int id)
-        {
-                context.Response.StatusCode = (int) System.Net.HttpStatusCode.OK;
-                return await context.StringResponseAsync("Hello world");
-        }
+		string path = Application.dataPath + "/Web/";
+		server.RegisterModule(new StaticFilesModule(path));
 	}
+
+	[WebApiHandler(HttpVerbs.Post, "/message")]
+	public async Task<bool> GetMessage(WebServer server, HttpListenerContext context)
+	{
+		try
+		{
+			Message message = context.ParseJson<Message>();
+			if(message.message == null) {
+				throw new Exception();
+			}
+
+			Debug.Log(message.message);
+
+			context.Response.StatusCode = (int) System.Net.HttpStatusCode.Created;
+			return await context.StringResponseAsync(string.Empty);
+		}
+		catch (Exception ex)
+		{
+			return await context.JsonExceptionResponseAsync(ex);
+		}
+	}
+}
 
 public class server : MonoBehaviour {
 	System.Net.HttpListener listener;
