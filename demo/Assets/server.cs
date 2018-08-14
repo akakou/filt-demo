@@ -1,45 +1,58 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
-using System.Net;
+//using System.Net;
+using System;
 using System.Text;
+using System.Collections.Generic;
+using System.Linq;
 
+using System.Threading.Tasks;
+using Unosquare.Swan.Attributes;
+using Unosquare.Labs.EmbedIO.Modules;
+using Unosquare.Labs.EmbedIO.Constants;
+using Unosquare.Labs.EmbedIO;
+using Unosquare.Net;
+
+
+class Message
+{
+	[JsonProperty("message")]
+	public int Id { get; set; }
+}
+
+public class MessageController : WebApiController
+{
+        public static void Setup(WebServer server)
+        {
+            server.RegisterModule(new WebApiModule());
+            server.Module<WebApiModule>().RegisterController<MessageController>();
+        }
+
+
+	    [WebApiHandler(HttpVerbs.Get, "/test")]
+        public async Task<bool> GetMessage(WebServer server, HttpListenerContext context,
+            int id)
+        {
+                context.Response.StatusCode = (int) System.Net.HttpStatusCode.OK;
+                return await context.StringResponseAsync("Hello world");
+        }
+	}
 
 public class server : MonoBehaviour {
-	HttpListener listener;
+	System.Net.HttpListener listener;
 
 	// Use this for initialization
-	void Start () {	
+	async Task Start () {	
 		Debug.Log("start !");
 			
-		System.Threading.Tasks.Task.Run( () => {			
-			InitServer();
+		var url = $@"http://*:9000";
 
-			while (true)
-			{
-				HttpListenerContext context = listener.GetContext();
-				HttpListenerResponse res = context.Response;
-				res.StatusCode = 200;
+		using (var server = new WebServer(url, RoutingStrategy.Regex))
+		{
+			MessageController.Setup(server);
+			await server.RunAsync();
+		}
 
-				byte[] content = Encoding.UTF8.GetBytes("HELLO");
-				res.OutputStream.Write(content, 0, content.Length);
-
-				res.Close();
-				
-			}
-		});	
-
-		Debug.Log("end!");		
-	}
-	
-	// Update is called once per frame
-	void Update () {
-	}
-
-	void InitServer() {
-		listener = new HttpListener();
-		listener.Prefixes.Add("http://localhost:8080/");
-		listener.Start();
+		Debug.Log("end!");
 	}
 }
