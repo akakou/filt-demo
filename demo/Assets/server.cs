@@ -2,19 +2,20 @@
 
 //using System.Net;
 using System;
+using System.IO;
 using System.Text;
-using System.Collections.Generic;
 using System.Linq;
-
+using System.Collections.Generic;
 using System.Threading.Tasks;
+
 using Unosquare.Swan.Attributes;
 using Unosquare.Labs.EmbedIO.Modules;
 using Unosquare.Labs.EmbedIO.Constants;
 using Unosquare.Labs.EmbedIO;
 using Unosquare.Net;
-using System.IO;
 
 
+using Filt;
 
 class Message
 {
@@ -24,6 +25,17 @@ class Message
 
 public class MessageController : WebApiController
 {
+	bool isSafe(String data) {
+		byte[] target = System.Text.Encoding.ASCII.GetBytes(data + "\n");
+		FiltRequest request = new FiltRequest(target);
+		string url = Environment.GetEnvironmentVariable("Filt");
+		FiltClient filt = new FiltClient(url);
+		FiltResponse response = filt.Send(request, false);
+		Debug.Log(response.Hit);
+		Debug.Log(response.Success);
+
+		return (!response.Hit) && response.Success;
+	}
 	static UnityChanLipSync  speaker;
 	public static void Setup(WebServer server, UnityChanLipSync  _speaker)
 	{
@@ -32,10 +44,8 @@ public class MessageController : WebApiController
 
 		string path = Environment.GetFolderPath (Environment.SpecialFolder.Personal) + "/FiltDemo/Web/";
 		path = path.Replace("\\", "/");
-		//string path = Application.dataPath + "/../../Web/";
-		Debug.Log(path);
-		server.RegisterModule(new StaticFilesModule(path));
 
+		server.RegisterModule(new StaticFilesModule(path));
 		speaker = _speaker;
 	}
 
@@ -50,7 +60,12 @@ public class MessageController : WebApiController
 			}
 
 			Debug.Log(message.message);
-			speaker.Talk(message.message);
+			
+			if(isSafe(message.message)) {
+				speaker.Talk(message.message);
+			} else {
+				speaker.Talk("発言をブロックしました。");
+			}
 
 			context.Response.StatusCode = (int) System.Net.HttpStatusCode.Created;
 			return await context.StringResponseAsync(string.Empty);
@@ -64,9 +79,10 @@ public class MessageController : WebApiController
 
 public class server : MonoBehaviour {
 	System.Net.HttpListener listener;
+	FiltClient filt;
 
 	// Use this for initialization
-	async Task Start () {	
+	async Task Start () {
 		Debug.Log("start !");
 		var lipSync = GetComponent<UnityChanLipSync>();
 			
