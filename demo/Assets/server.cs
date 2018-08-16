@@ -17,6 +17,36 @@ using Unosquare.Net;
 
 using Filt;
 
+class SafetySpeaker {
+	FiltClient filt;
+	UnityChanLipSync  speaker;
+	public SafetySpeaker(UnityChanLipSync speaker) {
+		string url = Environment.GetEnvironmentVariable("Filt");
+		filt = new FiltClient(url);
+		this.speaker = speaker;
+	}
+
+	public void Speak(String message) {
+		Debug.Log(message);
+		
+		if(isSafe(message)) {
+			speaker.Talk(message);
+		} else {
+			speaker.Talk(message + "、はアニメのタイトルを含んでいます。");
+		}
+	}
+	private bool isSafe(String data) {
+		byte[] target = System.Text.Encoding.UTF8.GetBytes(data);
+		FiltRequest request = new FiltRequest(target);
+		FiltResponse response = filt.Send(request, false);
+
+		Debug.Log("hit:" + response.Hit);
+		Debug.Log("success:" + response.Success);
+
+		return (!response.Hit) && response.Success;
+	}
+}
+
 class Message
 {
 	[JsonProperty("message")]
@@ -25,20 +55,12 @@ class Message
 
 public class MessageController : WebApiController
 {
-	bool isSafe(String data) {
-		byte[] target = System.Text.Encoding.ASCII.GetBytes(data + "\n");
-		FiltRequest request = new FiltRequest(target);
-		string url = Environment.GetEnvironmentVariable("Filt");
-		FiltClient filt = new FiltClient(url);
-		FiltResponse response = filt.Send(request, false);
-		Debug.Log(response.Hit);
-		Debug.Log(response.Success);
+	static SafetySpeaker speaker;
 
-		return (!response.Hit) && response.Success;
-	}
-	static UnityChanLipSync  speaker;
-	public static void Setup(WebServer server, UnityChanLipSync  _speaker)
+	public static void Setup(WebServer server, UnityChanLipSync lipSync)
 	{
+		speaker = new SafetySpeaker(lipSync);
+
 		server.RegisterModule(new WebApiModule());
 		server.Module<WebApiModule>().RegisterController<MessageController>();
 
@@ -46,7 +68,6 @@ public class MessageController : WebApiController
 		path = path.Replace("\\", "/");
 
 		server.RegisterModule(new StaticFilesModule(path));
-		speaker = _speaker;
 	}
 
 	[WebApiHandler(HttpVerbs.Post, "/message")]
@@ -59,13 +80,7 @@ public class MessageController : WebApiController
 				throw new Exception();
 			}
 
-			Debug.Log(message.message);
-			
-			if(isSafe(message.message)) {
-				speaker.Talk(message.message);
-			} else {
-				speaker.Talk("発言をブロックしました。");
-			}
+			speaker.Speak(message.message);
 
 			context.Response.StatusCode = (int) System.Net.HttpStatusCode.Created;
 			return await context.StringResponseAsync(string.Empty);
