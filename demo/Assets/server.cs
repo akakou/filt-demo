@@ -32,13 +32,24 @@ class SafetySpeaker {
 		if(isSafe(message)) {
 			speaker.Talk(message);
 		} else {
-			speaker.Talk(message + "、はアニメのタイトルを含んでいます。");
+			speaker.Talk("アニメのタイトルをブロックしました！");
 		}
 	}
 	private bool isSafe(String data) {
 		byte[] target = System.Text.Encoding.UTF8.GetBytes(data);
 		FiltRequest request = new FiltRequest(target);
-		FiltResponse response = filt.Send(request, false);
+		FiltResponse response = null;
+
+		try {
+			response = filt.Send(request, false);
+		} catch {
+			speaker.Talk("フィルト へのアクセスに失敗しました");
+		}
+
+		if (response != null && !response.Success)
+		{
+			speaker.Talk("フィルト での判定に失敗しました");
+		}
 
 		Debug.Log("hit:" + response.Hit);
 		Debug.Log("success:" + response.Success);
